@@ -2,6 +2,12 @@
 
 基于 Vue 3 + TypeScript + Element Plus 的深色主题甘特时间轴弹窗组件，支持多任务多段拖拽编辑、时间范围约束和脏数据检测。
 
+![alt text](image.png)
+
+![alt text](image-1.png)
+
+![alt text](image-2.png)
+
 ## 功能
 
 - 深色主题甘特图，多任务多段时间条
