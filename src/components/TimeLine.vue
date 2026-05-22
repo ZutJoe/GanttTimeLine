@@ -16,9 +16,15 @@ const props = withDefaults(defineProps<{
   trackDirty?: boolean
   /** 是否启用每任务 limit 时间范围约束（默认 true）*/
   enforceLimit?: boolean
+  /** 最小视口时长（秒），滚轮/按钮缩放的下限，默认 3600（1小时）*/
+  minZoomSeconds?: number
+  /** 时间段最小拖拽宽度（秒），防止拖至零长，默认 900（15分钟）*/
+  minBarSeconds?: number
 }>(), {
   trackDirty: true,
   enforceLimit: true,
+  minZoomSeconds: 3600,
+  minBarSeconds: 900,
 })
 
 /**
@@ -41,7 +47,6 @@ const localVisible = computed({
 // ────────────────────────── 常量 ──────────────────────────
 
 const LABEL_W = 172              // 左侧任务标签列宽度（px）
-const MIN_BAR_SECONDS = 900      // 时间段最小宽度：15 分钟（防止拖拽至零长）
 const TOTAL_RANGE = 7 * 86400   // 可导航的总时间范围：7 天（秒）
 
 /** Unix ms 时间戳 → 内部秒（距 ORIGIN 的秒数）*/
@@ -361,10 +366,10 @@ function onMousemove(e: MouseEvent) {
   const bounds = getTaskBounds(dragging.value.taskIdx)
   if (dragging.value.edge === 'left') {
     const newStart = snapSecond(dragStartSec.value + dSec)
-    seg.startTime = Math.max(bounds.min, Math.min(newStart, seg.endTime - MIN_BAR_SECONDS))
+    seg.startTime = Math.max(bounds.min, Math.min(newStart, seg.endTime - props.minBarSeconds))
   } else if (dragging.value.edge === 'right') {
     const newEnd = snapSecond(dragStartSecEnd.value + dSec)
-    seg.endTime = Math.min(bounds.max, Math.max(newEnd, seg.startTime + MIN_BAR_SECONDS))
+    seg.endTime = Math.min(bounds.max, Math.max(newEnd, seg.startTime + props.minBarSeconds))
   } else {
     const dur = dragStartSecEnd.value - dragStartSec.value
     const raw = snapSecond(dragStartSec.value + dSec)
@@ -534,7 +539,6 @@ function onOuterConfirm() {
 // ────────────────────────── 缩放 ────────────────────────────
 
 const ZOOM_FACTOR = 1.2    // 按钮每次缩放比例
-const MIN_ZOOM_DUR = 3600  // 最小视口：1 小时（秒）
 
 /**
  * 鼠标滚轮缩放：以光标所在时间点为中心放大/缩小视口。
@@ -550,7 +554,7 @@ function onWheel(e: WheelEvent) {
 
   // 每单位 deltaY 对应 0.08% 缩放，普通鼠标一格 ~8%，触控板极平滑
   const factor = Math.pow(1.0008, e.deltaY)
-  const newDur = Math.max(MIN_ZOOM_DUR, Math.min(_viewMax - _viewMin, totalSeconds.value * factor))
+  const newDur = Math.max(props.minZoomSeconds, Math.min(_viewMax - _viewMin, totalSeconds.value * factor))
   let newStart = mouseSec - ratio * newDur
   newStart = Math.max(_viewMin, Math.min(_viewMax - newDur, newStart))
   viewStart.value = newStart
@@ -563,7 +567,7 @@ function onWheel(e: WheelEvent) {
 function onZoom(direction: 1 | -1) {
   const center = (viewStart.value + viewEnd.value) / 2
   const factor = direction > 0 ? ZOOM_FACTOR : 1 / ZOOM_FACTOR
-  const newDur = Math.max(MIN_ZOOM_DUR, Math.min(_viewMax - _viewMin, totalSeconds.value * factor))
+  const newDur = Math.max(props.minZoomSeconds, Math.min(_viewMax - _viewMin, totalSeconds.value * factor))
   let newStart = center - newDur / 2
   newStart = Math.max(_viewMin, Math.min(_viewMax - newDur, newStart))
   viewStart.value = newStart
